@@ -7,11 +7,8 @@ from threading import Thread
 from time import sleep
 
 class LocalMQTT:
-    mapping = {
-            "home/greenhouse/esp32-1/weather": "*******SECRET*TOKEN******",
-            }
 
-    def __init__(self, host, callback, debug=False):
+    def __init__(self, config, callback, debug=False):
         self.callback = callback
         self.debug = debug
 
@@ -19,9 +16,11 @@ class LocalMQTT:
         client.on_connect = self.on_connect
         client.on_message = self.on_message
 
+        self.mapping = config["topics"]
+
         if self.debug:
             print("Connecting..")
-        client.connect(host, 1883, 60)
+        client.connect(config["network"]["broker"]["ip"], config["network"]["broker"]["port"], 60)
 
         if self.debug:
             print("Ok")
@@ -63,7 +62,7 @@ class LocalMQTT:
 class ThingsBoardPublishWorker:
     connected = False
 
-    def __init__(self, host, queue, token, debug=False):
+    def __init__(self, config, queue, token, debug=False):
         self.queue = queue
         self.token = token
         self.debug = debug
@@ -71,7 +70,7 @@ class ThingsBoardPublishWorker:
         client = self.client = mqtt.Client()
         client.username_pw_set(token)
         client.on_connect = self.on_connect
-        client.connect(host, 1883, 60)
+        client.connect(config["network"]["thingsboard"]["ip"], config["network"]["thingsboard"]["port"], 60)
         client.loop_start()
 
         t = self.t = Thread(target=self.work)
@@ -114,7 +113,11 @@ class ThingsBoardBridge:
 
     def __init__(self, debug=False):
         self.debug = debug
-        lmqtt = LocalMQTT("192.168.0.80", self.callback, debug=debug)
+
+        with open("/srv/thingsboard-bridge.json") as f:
+            self.config = json.load(f)
+
+        lmqtt = LocalMQTT(self.config, self.callback, debug=debug)
 
 
     def add_or_get_worker(self, token):
@@ -124,7 +127,7 @@ class ThingsBoardBridge:
             worker = self.workers[token]
         except KeyError:
             q = Queue()
-            pw = ThingsBoardPublishWorker("192.168.100.200", q, token, debug=self.debug)
+            pw = ThingsBoardPublishWorker(self.config, q, token, debug=self.debug)
             worker = {"Q": q, "worker": pw}
             self.workers[token] = worker
         return worker

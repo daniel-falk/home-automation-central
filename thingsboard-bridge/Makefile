@@ -5,4 +5,4 @@ build:
 	docker build -t ${NAME}:${TAG} .
 
 run:
-	docker run -itd --restart=always ${NAME}:${TAG}
+	docker run -itd --restart=always -v /srv:/srv ${NAME}:${TAG}
