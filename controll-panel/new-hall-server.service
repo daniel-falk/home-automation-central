@@ -1,0 +1,14 @@
+[Unit]
+Description=MQTT client for interface panel
+After=network.target
+
+[Service]
+User=pi
+Type=simple
+WorkingDirectory=/home/pi/new_hall_gui
+ExecStart=/usr/bin/python main.py
+StandardError=journal
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
